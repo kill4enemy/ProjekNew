@@ -48,7 +48,7 @@
                 </h3>
 
             <p class="text-gray-600 dark:text-gray-300">
-                {{ $court->location }}
+                Tipe: {{ $court->type }} | Kapasitas: {{ $court->capacity }} Orang
             </p>
 
             @if($court->description)
@@ -80,7 +80,7 @@
                     <div class="mt-3">
                         @foreach($court->bookings as $booking)
                             <p class="text-sm text-gray-500 dark:text-gray-300">
-                                {{ $booking->start_time }} - {{ $booking->end_time }}
+                                {{ \Carbon\Carbon::parse($booking->start_time)->format('H:i') }} - {{ \Carbon\Carbon::parse($booking->end_time)->format('H:i') }}
                             </p>
                         @endforeach
                     </div>

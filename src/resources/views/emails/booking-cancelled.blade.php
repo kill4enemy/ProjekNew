@@ -6,7 +6,7 @@
 
 <ul>
     <li>Kode Booking: {{ $booking->booking_code }}</li>
-    <li>Lapangan: {{ $booking->court->name }}</li>
+    <li>Lapangan: {{ $booking->facility->name }}</li>
     <li>Tanggal: {{ $booking->booking_date }}</li>
     <li>Jam: {{ $booking->start_time }} - {{ $booking->end_time }}</li>
     <li>Status: Cancelled</li>

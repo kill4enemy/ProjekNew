@@ -1,24 +1,29 @@
 <?php
 
 namespace App\Http\Controllers;
+
 use App\Models\Booking;
-use App\Models\Court;
-use App\Mail\BookingCancelledMail;
+use App\Models\Facility;
+use App\Models\Setting;
+use App\Models\User;
+use App\Mail\BookingCreatedMail;
 use App\Mail\BookingConfirmedMail;
+use App\Mail\BookingCancelledMail;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-
 use Midtrans\Config;
 use Midtrans\Snap;
+use Filament\Notifications\Notification;
 
 class BookingController extends Controller
 {
     public function store(Request $request)
     {
         $request->validate([
-            'court_id' => ['required', 'exists:courts,id'],
+            'facility_id' => ['required', 'exists:facilities,id'],
             'booking_date' => ['required', 'date'],
             'start_time' => ['required'],
             'duration' => ['required', 'integer', 'min:1', 'max:3'],
@@ -26,91 +31,98 @@ class BookingController extends Controller
             'customer_phone' => ['required', 'string', 'max:20'],
             'customer_email' => ['nullable', 'email', 'max:255'],
         ]);
-            $court = Court::findOrFail($request->court_id);
 
-            $startTime = Carbon::parse($request->start_time);
-            $endTime = $startTime->copy()->addHours((int) $request->duration);
+        $facility = Facility::findOrFail($request->facility_id);
 
-            $dayOfWeek = Carbon::parse($request->booking_date)->dayOfWeek;
+        $startTime = Carbon::parse($request->start_time);
+        $endTime = $startTime->copy()->addHours((int) $request->duration);
 
-            // Logic Jam Operational
-            $isWeekend = in_array($dayOfWeek, [
-                Carbon::SATURDAY,
-                Carbon::SUNDAY,
-            ]);
+        $dayName = strtolower(Carbon::parse($request->booking_date)->englishDayOfWeek); // e.g. "monday"
 
-            $openTime = $isWeekend ? '07:00:00' : '08:00:00';
-            $closeTime = $isWeekend ? '23:00:00' : '22:00:00';
+        // Dynamic Jam Operasional from Settings
+        $openTimeSetting = Setting::getValue("open_time_{$dayName}", "08:00");
+        $closeTimeSetting = Setting::getValue("close_time_{$dayName}", "22:00");
 
-            if (
-                $startTime->format('H:i:s') < $openTime ||
-                $endTime->format('H:i:s') > $closeTime
-            ) {
-                return back()
-                    ->withInput()
-                    ->with('error', 'Jam reservasi berada di luar jam operasional.');
-            }
-            
-            $isBooked = Booking::where('court_id', $request->court_id)
-                ->where('booking_date', $request->booking_date)
-                ->where('status', 'confirmed')
-                ->where(function ($query) use ($startTime, $endTime) {
-                    $query->where('start_time', '<', $endTime->format('H:i:s'))
-                        ->where('end_time', '>', $startTime->format('H:i:s'));
-                })
-                ->exists();
+        $openTime = Carbon::parse($openTimeSetting)->format('H:i:s');
+        $closeTime = Carbon::parse($closeTimeSetting)->format('H:i:s');
+
+        if (
+            $startTime->format('H:i:s') < $openTime ||
+            $endTime->format('H:i:s') > $closeTime
+        ) {
+            return back()
+                ->withInput()
+                ->with('error', "Jam reservasi berada di luar jam operasional ({$openTimeSetting} - {$closeTimeSetting}).");
+        }
         
-            if ($isBooked) {
-                return back()
-                    ->withInput()
-                    ->with('error', 'Waktu di jam tersebut sudah terisi. Silakan pilih jadwal lain.');
-            }
-                $booking = Booking::create([
-                    'user_id' => 1,
-                    'customer_name' => $request->customer_name,
-                    'customer_phone' => $request->customer_phone,
-                    'customer_email' => $request->customer_email,
-                    'court_id' => $request->court_id,
-                    'booking_date' => $request->booking_date,
-                    'start_time' => $startTime->format('H:i:s'),
-                    'end_time' => $endTime->format('H:i:s'),
-                    'total_price' => $court->price_per_hour * (int) $request->duration,
-                    'status' => 'pending_payment',
-                ]);
+        // Pengecekan double booking (status pending_payment atau confirmed)
+        $isBooked = Booking::where('facility_id', $request->facility_id)
+            ->where('booking_date', $request->booking_date)
+            ->whereIn('status', ['confirmed', 'pending_payment'])
+            ->where(function ($query) use ($startTime, $endTime) {
+                $query->where('start_time', '<', $endTime->format('H:i:s'))
+                    ->where('end_time', '>', $startTime->format('H:i:s'));
+            })
+            ->exists();
+    
+        if ($isBooked) {
+            return back()
+                ->withInput()
+                ->with('error', 'Waktu di jam tersebut sudah terisi. Silakan pilih jadwal lain.');
+        }
 
-                $booking->update([
-                    'booking_code' => 'HANS-' . now()->format('Ymd') . '-' . $booking->id,
-                    'midtrans_order_id' => 'HANS-' . now()->format('YmdHis') . '-' . $booking->id,
-                ]);
+        $booking = Booking::create([
+            'user_id' => Auth::check() ? Auth::id() : null, // Nullable for guest booking
+            'customer_name' => $request->customer_name,
+            'customer_phone' => $request->customer_phone,
+            'customer_email' => $request->customer_email,
+            'facility_id' => $request->facility_id,
+            'booking_date' => $request->booking_date,
+            'start_time' => $startTime->format('H:i:s'),
+            'end_time' => $endTime->format('H:i:s'),
+            'total_price' => $facility->price_per_hour * (int) $request->duration,
+            'status' => 'pending_payment',
+        ]);
 
-                Config::$serverKey = config('services.midtrans.server_key');
-                Config::$isProduction = config('services.midtrans.is_production');
-                Config::$isSanitized = config('services.midtrans.is_sanitized');
-                Config::$is3ds = config('services.midtrans.is_3ds');
+        $booking->update([
+            'booking_code' => 'HANS-' . now()->format('Ymd') . '-' . $booking->id,
+            'midtrans_order_id' => 'HANS-' . now()->format('YmdHis') . '-' . $booking->id,
+        ]);
 
-                $params = [
-                    'transaction_details' => [
-                        'order_id' => $booking->midtrans_order_id,
-                        'gross_amount' => $booking->total_price,
-                    ],
-                    'customer_details' => [
-                        'first_name' => $booking->customer_name,
-                        'email' => $booking->customer_email,
-                        'phone' => $booking->customer_phone,
-                    ],
-                    'callbacks' => [
-                        'finish' => route('payment.finish', $booking),
-                    ],
-                ];
+        // Pembayaran dilakukan melalui midtrans, tidak mengirim email pending
 
-                $snapToken = Snap::getSnapToken($params);
+        Config::$serverKey = config('services.midtrans.server_key');
+        Config::$isProduction = config('services.midtrans.is_production');
+        Config::$isSanitized = config('services.midtrans.is_sanitized');
+        Config::$is3ds = config('services.midtrans.is_3ds');
 
-                $booking->update([
-                    'snap_token' => $snapToken,
-                ]);
+        $params = [
+            'transaction_details' => [
+                'order_id' => $booking->midtrans_order_id,
+                'gross_amount' => $booking->total_price,
+            ],
+            'customer_details' => [
+                'first_name' => $booking->customer_name,
+                'email' => $booking->customer_email,
+                'phone' => $booking->customer_phone,
+            ],
+            'callbacks' => [
+                'finish' => route('payment.finish', $booking),
+            ],
+        ];
 
-                return redirect()->route('payment.show', $booking);
+        try {
+            $snapToken = Snap::getSnapToken($params);
+            $booking->update([
+                'snap_token' => $snapToken,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to get Midtrans Snap Token: ' . $e->getMessage());
+        }
+
+        return redirect()->route('payment.show', $booking);
     }
+
     public function callback(Request $request)
     {
         Log::info('Midtrans callback received', $request->all());
@@ -147,28 +159,70 @@ class BookingController extends Controller
             ], 404);
         }
 
+        $statusChanged = false;
+        $oldStatus = $booking->status;
+
         if (in_array($request->transaction_status, ['capture', 'settlement'])) {
             if ($booking->status !== 'confirmed') {
                 $booking->update([
                     'status' => 'confirmed',
                     'payment_type' => $request->payment_type,
                     'transaction_status' => $request->transaction_status,
-                    'paid_at' => now(),
+                    'midtrans_transaction_id' => $request->transaction_id,
+                    'payment_verified_at' => now(),
                 ]);
+                $statusChanged = true;
 
+                // Send email to customer (Synchronously via SMTP)
                 if ($booking->customer_email) {
-                    Mail::to($booking->customer_email)
-                        ->queue(new BookingConfirmedMail($booking->fresh(['court'])));
+                    try {
+                        Mail::to($booking->customer_email)
+                            ->send(new BookingConfirmedMail($booking->fresh(['facility'])));
+                    } catch (\Exception $e) {
+                        Log::error('Failed to send BookingConfirmedMail to customer: ' . $e->getMessage());
+                    }
+                }
+
+                // Send email notification to all admins (Synchronously via SMTP)
+                $adminEmails = User::whereHas('roles', function($q) {
+                    $q->where('name', 'super_admin');
+                })->pluck('email')->toArray();
+
+                if (!empty($adminEmails)) {
+                    try {
+                        Mail::to($adminEmails)->send(new BookingConfirmedMail($booking->fresh(['facility'])));
+                    } catch (\Exception $e) {
+                        Log::error('Failed to send BookingConfirmedMail to admins: ' . $e->getMessage());
+                    }
+                }
+
+                // Send real-time database notification to admins
+                $admins = User::whereHas('roles', function($q) {
+                    $q->where('name', 'super_admin');
+                })->get();
+
+                foreach ($admins as $admin) {
+                    try {
+                        Notification::make()
+                            ->title('Pembayaran Booking Berhasil')
+                            ->body("Booking {$booking->booking_code} oleh {$booking->customer_name} telah dikonfirmasi.")
+                            ->success()
+                            ->sendToDatabase($admin);
+                    } catch (\Exception $e) {
+                        Log::error('Failed to send Filament database notification: ' . $e->getMessage());
+                    }
                 }
             }
         }
 
         if ($request->transaction_status === 'pending') {
-            $booking->update([
-                'status' => 'pending_payment',
-                'payment_type' => $request->payment_type,
-                'transaction_status' => $request->transaction_status,
-            ]);
+            if ($booking->status !== 'pending_payment') {
+                $booking->update([
+                    'status' => 'pending_payment',
+                    'payment_type' => $request->payment_type,
+                    'transaction_status' => $request->transaction_status,
+                ]);
+            }
         }
 
         if (in_array($request->transaction_status, ['deny', 'expire', 'cancel'])) {
@@ -178,10 +232,46 @@ class BookingController extends Controller
                     'payment_type' => $request->payment_type,
                     'transaction_status' => $request->transaction_status,
                 ]);
+                $statusChanged = true;
 
+                // Send email to customer (Synchronously via SMTP)
                 if ($booking->customer_email) {
-                    Mail::to($booking->customer_email)
-                        ->queue(new BookingCancelledMail($booking->fresh(['court'])));
+                    try {
+                        Mail::to($booking->customer_email)
+                            ->send(new BookingCancelledMail($booking->fresh(['facility'])));
+                    } catch (\Exception $e) {
+                        Log::error('Failed to send BookingCancelledMail to customer: ' . $e->getMessage());
+                    }
+                }
+
+                // Send email notification to admins (Synchronously via SMTP)
+                $adminEmails = User::whereHas('roles', function($q) {
+                    $q->where('name', 'super_admin');
+                })->pluck('email')->toArray();
+
+                if (!empty($adminEmails)) {
+                    try {
+                        Mail::to($adminEmails)->send(new BookingCancelledMail($booking->fresh(['facility'])));
+                    } catch (\Exception $e) {
+                        Log::error('Failed to send BookingCancelledMail to admins: ' . $e->getMessage());
+                    }
+                }
+
+                // Send real-time database notification to admins
+                $admins = User::whereHas('roles', function($q) {
+                    $q->where('name', 'super_admin');
+                })->get();
+
+                foreach ($admins as $admin) {
+                    try {
+                        Notification::make()
+                            ->title('Booking Dibatalkan/Gagal')
+                            ->body("Booking {$booking->booking_code} oleh {$booking->customer_name} telah dibatalkan.")
+                            ->danger()
+                            ->sendToDatabase($admin);
+                    } catch (\Exception $e) {
+                        Log::error('Failed to send Filament database notification: ' . $e->getMessage());
+                    }
                 }
             }
         }
@@ -191,4 +281,119 @@ class BookingController extends Controller
         ]);
     }
 
+    public static function syncStatus(Booking $booking)
+    {
+        if ($booking->status !== 'pending_payment') {
+            return $booking;
+        }
+
+        try {
+            Config::$serverKey = config('services.midtrans.server_key');
+            Config::$isProduction = config('services.midtrans.is_production');
+            Config::$isSanitized = config('services.midtrans.is_sanitized');
+            Config::$is3ds = config('services.midtrans.is_3ds');
+
+            $status = \Midtrans\Transaction::status($booking->midtrans_order_id);
+
+            if (in_array($status->transaction_status, ['capture', 'settlement'])) {
+                $booking->update([
+                    'status' => 'confirmed',
+                    'payment_type' => $status->payment_type,
+                    'transaction_status' => $status->transaction_status,
+                    'midtrans_transaction_id' => $status->transaction_id,
+                    'payment_verified_at' => now(),
+                ]);
+
+                // Send email to customer (Synchronously via SMTP)
+                if ($booking->customer_email) {
+                    try {
+                        Mail::to($booking->customer_email)
+                            ->send(new BookingConfirmedMail($booking->fresh(['facility'])));
+                    } catch (\Exception $e) {
+                        Log::error('Failed to send BookingConfirmedMail to customer in syncStatus: ' . $e->getMessage());
+                    }
+                }
+
+                // Send email notification to all admins (Synchronously via SMTP)
+                $adminEmails = User::whereHas('roles', function($q) {
+                    $q->where('name', 'super_admin');
+                })->pluck('email')->toArray();
+
+                if (!empty($adminEmails)) {
+                    try {
+                        Mail::to($adminEmails)->send(new BookingConfirmedMail($booking->fresh(['facility'])));
+                    } catch (\Exception $e) {
+                        Log::error('Failed to send BookingConfirmedMail to admins in syncStatus: ' . $e->getMessage());
+                    }
+                }
+
+                // Send real-time database notification to admins
+                $admins = User::whereHas('roles', function($q) {
+                    $q->where('name', 'super_admin');
+                })->get();
+
+                foreach ($admins as $admin) {
+                    try {
+                        Notification::make()
+                            ->title('Pembayaran Booking Berhasil')
+                            ->body("Booking {$booking->booking_code} oleh {$booking->customer_name} telah dikonfirmasi.")
+                            ->success()
+                            ->sendToDatabase($admin);
+                    } catch (\Exception $e) {
+                        Log::error('Failed to send Filament database notification in syncStatus: ' . $e->getMessage());
+                    }
+                }
+            } elseif (in_array($status->transaction_status, ['deny', 'expire', 'cancel'])) {
+                $booking->update([
+                    'status' => 'cancelled',
+                    'payment_type' => $status->payment_type,
+                    'transaction_status' => $status->transaction_status,
+                ]);
+
+                // Send email to customer (Synchronously via SMTP)
+                if ($booking->customer_email) {
+                    try {
+                        Mail::to($booking->customer_email)
+                            ->send(new BookingCancelledMail($booking->fresh(['facility'])));
+                    } catch (\Exception $e) {
+                        Log::error('Failed to send BookingCancelledMail to customer in syncStatus: ' . $e->getMessage());
+                    }
+                }
+
+                // Send email notification to admins (Synchronously via SMTP)
+                $adminEmails = User::whereHas('roles', function($q) {
+                    $q->where('name', 'super_admin');
+                })->pluck('email')->toArray();
+
+                if (!empty($adminEmails)) {
+                    try {
+                        Mail::to($adminEmails)->send(new BookingCancelledMail($booking->fresh(['facility'])));
+                    } catch (\Exception $e) {
+                        Log::error('Failed to send BookingCancelledMail to admins in syncStatus: ' . $e->getMessage());
+                    }
+                }
+
+                // Send real-time database notification to admins
+                $admins = User::whereHas('roles', function($q) {
+                    $q->where('name', 'super_admin');
+                })->get();
+
+                foreach ($admins as $admin) {
+                    try {
+                        Notification::make()
+                            ->title('Booking Dibatalkan/Gagal')
+                            ->body("Booking {$booking->booking_code} oleh {$booking->customer_name} telah dibatalkan.")
+                            ->danger()
+                            ->sendToDatabase($admin);
+                    } catch (\Exception $e) {
+                        Log::error('Failed to send Filament database notification in syncStatus: ' . $e->getMessage());
+                    }
+                }
+            }
+        } catch (\Exception $e) {
+            Log::error('Failed to sync Midtrans transaction status for booking ' . $booking->id . ': ' . $e->getMessage());
+        }
+
+        return $booking;
+    }
 }

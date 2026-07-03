@@ -62,7 +62,7 @@
 
                 <select
                     id="court-select"
-                    name="court_id"
+                    name="facility_id"
                     class="w-full border border-gray-300 dark:border-gray-600 p-3 rounded bg-white text-gray-900 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
                 >
@@ -74,7 +74,7 @@
                                     ? asset($court->image)
                                     : asset('storage/' . $court->image))
                                 : '' }}"
-                            @selected(old('court_id') == $court->id)
+                            @selected(old('facility_id') == $court->id)
                         >
                             {{ $court->name }}
                         </option>

@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Padel Court Booking</title>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
@@ -12,6 +13,7 @@
         tailwind.config = {
             darkMode: 'class'
         }
+        window.isAuthenticated = @json(\Illuminate\Support\Facades\Auth::check());
     </script>
 </head>
 
@@ -30,6 +32,14 @@
     @include('components.navbar')
 
     <main class="w-full px-4 sm:px-6 lg:px-10">
+        @if (isset($header))
+            <header class="py-6 border-b border-gray-200 dark:border-white/10 mb-6">
+                <div class="max-w-7xl mx-auto">
+                    {{ $header }}
+                </div>
+            </header>
+        @endif
+
         {{ $slot ?? '' }}
         @yield('content')
     </main>
@@ -184,5 +194,22 @@
 
     </div>
 </footer>
+
+<livewire:login-modal />
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        if (!window.isAuthenticated) {
+            document.body.addEventListener('click', (e) => {
+                const target = e.target.closest('a[href="/booking"], button.booking-btn, form[action*="booking"] button[type="submit"], form[action*="booking"] button:not([type])');
+                if (target) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    window.dispatchEvent(new CustomEvent('open-login-modal', { detail: { redirectTo: '/booking' } }));
+                }
+            });
+        }
+    });
+</script>
 </body>
 </html>

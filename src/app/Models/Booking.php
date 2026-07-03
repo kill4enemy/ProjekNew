@@ -1,35 +1,44 @@
 <?php
 
 namespace App\Models;
+
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Booking extends Model
 {
     protected $fillable = [
         'user_id',
-        'court_id',
+        'customer_name',
+        'customer_phone',
+        'customer_email',
+        'facility_id',
         'booking_date',
         'start_time',
         'end_time',
         'total_price',
         'status',
-        'customer_name',
-        'customer_phone',
-        'customer_email',
         'booking_code',
         'snap_token',
         'midtrans_order_id',
+        'midtrans_transaction_id',
         'payment_type',
         'transaction_status',
-        'paid_at',
+        'payment_verified_at',
     ];
-    public function user()
+
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    public function court()
+    public function facility(): BelongsTo
     {
-        return $this->belongsTo(Court::class);
+        return $this->belongsTo(Facility::class, 'facility_id');
+    }
+
+    public function court(): BelongsTo
+    {
+        return $this->belongsTo(Facility::class, 'facility_id');
     }
 }

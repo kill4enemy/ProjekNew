@@ -32,10 +32,10 @@
     document.getElementById('pay-button').addEventListener('click', function () {
         window.snap.pay('{{ $booking->snap_token }}', {
             onSuccess: function () {
-                window.location.href = '/booking';
+                window.location.href = '{{ route('payment.finish', $booking) }}';
             },
             onPending: function () {
-                window.location.href = '/booking';
+                window.location.href = '{{ route('payment.finish', $booking) }}';
             },
             onError: function () {
                 alert('Pembayaran gagal.');

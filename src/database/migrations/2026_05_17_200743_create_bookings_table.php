@@ -13,13 +13,19 @@ return new class extends Migration
     {
         Schema::create('bookings', function (Blueprint $table) {
             $table->id();
-
+            $table->string('booking_code')->nullable();
+            
             $table->foreignId('user_id')
+                ->nullable()
                 ->constrained()
-                ->cascadeOnDelete();
+                ->nullOnDelete();
 
-            $table->foreignId('court_id')
-                ->constrained()
+            $table->string('customer_name');
+            $table->string('customer_phone');
+            $table->string('customer_email')->nullable();
+
+            $table->foreignId('facility_id')
+                ->constrained('facilities')
                 ->cascadeOnDelete();
 
             $table->date('booking_date');
@@ -27,9 +33,14 @@ return new class extends Migration
             $table->time('end_time');
 
             $table->integer('total_price');
+            $table->string('status')->default('pending_payment'); // pending_payment, confirmed, cancelled
 
-            $table->string('status')
-                ->default('pending');
+            $table->string('snap_token')->nullable();
+            $table->string('midtrans_order_id')->nullable();
+            $table->string('midtrans_transaction_id')->nullable();
+            $table->string('payment_type')->nullable();
+            $table->string('transaction_status')->nullable();
+            $table->timestamp('payment_verified_at')->nullable();
 
             $table->timestamps();
         });

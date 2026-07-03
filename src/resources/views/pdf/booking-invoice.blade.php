@@ -29,7 +29,7 @@
 </div>
 
 <div class="box">
-    <div class="row"><span class="label">Lapangan</span> {{ $booking->court->name }}</div>
+    <div class="row"><span class="label">Lapangan</span> {{ $booking->facility->name }}</div>
     <div class="row"><span class="label">Tanggal</span> {{ $booking->booking_date }}</div>
     <div class="row"><span class="label">Jam</span> {{ $booking->start_time }} - {{ $booking->end_time }}</div>
     <div class="row"><span class="label">Status</span> CONFIRMED</div>

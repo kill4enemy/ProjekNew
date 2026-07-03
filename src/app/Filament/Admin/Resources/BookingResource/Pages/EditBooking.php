@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Filament\Admin\Resources\BookingResource\Pages;
+
 use App\Filament\Admin\Resources\BookingResource;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
@@ -24,7 +25,7 @@ class EditBooking extends EditRecord
 
     protected function afterSave(): void
     {
-         $booking = $this->record->fresh(['court']);
+         $booking = $this->record->fresh(['facility']);
 
          if ($this->oldStatus !== 'confirmed' && $booking->status === 'confirmed') {
              Mail::to($booking->customer_email)
