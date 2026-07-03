@@ -24,17 +24,17 @@ class EditBooking extends EditRecord
 
     protected function afterSave(): void
     {
-        $booking = $this->record->fresh(['court']);
+         $booking = $this->record->fresh(['court']);
 
-        if ($this->oldStatus !== 'confirmed' && $booking->status === 'confirmed') {
-            Mail::to($booking->customer_email)
-                ->send(new BookingConfirmedMail($booking));
-        }
+         if ($this->oldStatus !== 'confirmed' && $booking->status === 'confirmed') {
+             Mail::to($booking->customer_email)
+                 ->send(new BookingConfirmedMail($booking));
+         }
 
-        if ($this->oldStatus !== 'cancelled' && $booking->status === 'cancelled') {
-            Mail::to($booking->customer_email)
-                ->send(new BookingCancelledMail($booking));
-        }
+         if ($this->oldStatus !== 'cancelled' && $booking->status === 'cancelled') {
+             Mail::to($booking->customer_email)
+                 ->send(new BookingCancelledMail($booking));
+         }
     }
     
     protected function getHeaderActions(): array

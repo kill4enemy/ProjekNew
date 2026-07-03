@@ -3,6 +3,10 @@
 namespace App\Http\Controllers;
 use App\Models\Booking;
 use App\Models\Court;
+use App\Mail\BookingCancelledMail;
+use App\Mail\BookingConfirmedMail;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -109,58 +113,82 @@ class BookingController extends Controller
     }
     public function callback(Request $request)
     {
-            $serverKey = config('services.midtrans.server_key');
+        Log::info('Midtrans callback received', $request->all());
 
-            $signatureKey = hash(
-                'sha512',
-                $request->order_id .
-                $request->status_code .
-                $request->gross_amount .
-                $serverKey
-            );
+        $serverKey = config('services.midtrans.server_key');
 
-            if ($signatureKey !== $request->signature_key) {
-                return response()->json([
-                    'message' => 'Invalid signature',
-                ], 403);
-            }
+        $signatureKey = hash(
+            'sha512',
+            $request->order_id .
+            $request->status_code .
+            $request->gross_amount .
+            $serverKey
+        );
 
-            $booking = Booking::where('midtrans_order_id', $request->order_id)->first();
+        if ($signatureKey !== $request->signature_key) {
+            Log::warning('Invalid Midtrans signature', [
+                'order_id' => $request->order_id,
+            ]);
 
-            if (!$booking) {
-                return response()->json([
-                    'message' => 'Booking not found',
-                ], 404);
-            }
+            return response()->json([
+                'message' => 'Invalid signature',
+            ], 403);
+        }
 
-            if (in_array($request->transaction_status, ['capture', 'settlement'])) {
+        $booking = Booking::where('midtrans_order_id', $request->order_id)->first();
+
+        if (! $booking) {
+            Log::warning('Booking not found from Midtrans callback', [
+                'order_id' => $request->order_id,
+            ]);
+
+            return response()->json([
+                'message' => 'Booking not found',
+            ], 404);
+        }
+
+        if (in_array($request->transaction_status, ['capture', 'settlement'])) {
+            if ($booking->status !== 'confirmed') {
                 $booking->update([
                     'status' => 'confirmed',
                     'payment_type' => $request->payment_type,
                     'transaction_status' => $request->transaction_status,
                     'paid_at' => now(),
                 ]);
-            }
 
-            if ($request->transaction_status === 'pending') {
-                $booking->update([
-                    'status' => 'pending_payment',
-                    'payment_type' => $request->payment_type,
-                    'transaction_status' => $request->transaction_status,
-                ]);
+                if ($booking->customer_email) {
+                    Mail::to($booking->customer_email)
+                        ->queue(new BookingConfirmedMail($booking->fresh(['court'])));
+                }
             }
+        }
 
-            if (in_array($request->transaction_status, ['deny', 'expire', 'cancel'])) {
+        if ($request->transaction_status === 'pending') {
+            $booking->update([
+                'status' => 'pending_payment',
+                'payment_type' => $request->payment_type,
+                'transaction_status' => $request->transaction_status,
+            ]);
+        }
+
+        if (in_array($request->transaction_status, ['deny', 'expire', 'cancel'])) {
+            if ($booking->status !== 'cancelled') {
                 $booking->update([
                     'status' => 'cancelled',
                     'payment_type' => $request->payment_type,
                     'transaction_status' => $request->transaction_status,
                 ]);
-            }
 
-            return response()->json([
-                'message' => 'Callback processed',
-            ]);
+                if ($booking->customer_email) {
+                    Mail::to($booking->customer_email)
+                        ->queue(new BookingCancelledMail($booking->fresh(['court'])));
+                }
+            }
+        }
+
+        return response()->json([
+            'message' => 'Callback processed',
+        ]);
     }
 
 }

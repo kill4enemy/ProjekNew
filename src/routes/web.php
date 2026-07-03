@@ -73,9 +73,6 @@ Route::get('/payment/{booking}', function (Booking $booking) {
     return view('pages.payment', compact('booking'));
 })->name('payment.show');
  
-Route::post('/midtrans/callback', [BookingController::class, 'callback'])
-    ->name('midtrans.callback');
-
     //Invoice
 Route::get('/invoice/{booking}', function (Booking $booking) {
     return view('pages.invoice', compact('booking'));
