@@ -29,7 +29,7 @@
                 @endif
 
                 <a href="/riwayat-transaksi" class="text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-300 font-medium transition">
-                    Riwayat Transaksi
+                    Transaction
                 </a>
 
                 <a href="/profile" class="text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-300 font-medium transition">

@@ -203,11 +203,11 @@ class BookingController extends Controller
 
                 foreach ($admins as $admin) {
                     try {
-                        Notification::make()
+                        $notification = Notification::make()
                             ->title('Pembayaran Booking Berhasil')
                             ->body("Booking {$booking->booking_code} oleh {$booking->customer_name} telah dikonfirmasi.")
-                            ->success()
-                            ->sendToDatabase($admin);
+                            ->success();
+                        $admin->notifyNow($notification->toDatabase());
                     } catch (\Exception $e) {
                         Log::error('Failed to send Filament database notification: ' . $e->getMessage());
                     }
@@ -264,11 +264,11 @@ class BookingController extends Controller
 
                 foreach ($admins as $admin) {
                     try {
-                        Notification::make()
+                        $notification = Notification::make()
                             ->title('Booking Dibatalkan/Gagal')
                             ->body("Booking {$booking->booking_code} oleh {$booking->customer_name} telah dibatalkan.")
-                            ->danger()
-                            ->sendToDatabase($admin);
+                            ->danger();
+                        $admin->notifyNow($notification->toDatabase());
                     } catch (\Exception $e) {
                         Log::error('Failed to send Filament database notification: ' . $e->getMessage());
                     }
@@ -334,11 +334,11 @@ class BookingController extends Controller
 
                 foreach ($admins as $admin) {
                     try {
-                        Notification::make()
+                        $notification = Notification::make()
                             ->title('Pembayaran Booking Berhasil')
                             ->body("Booking {$booking->booking_code} oleh {$booking->customer_name} telah dikonfirmasi.")
-                            ->success()
-                            ->sendToDatabase($admin);
+                            ->success();
+                        $admin->notifyNow($notification->toDatabase());
                     } catch (\Exception $e) {
                         Log::error('Failed to send Filament database notification in syncStatus: ' . $e->getMessage());
                     }
@@ -380,11 +380,11 @@ class BookingController extends Controller
 
                 foreach ($admins as $admin) {
                     try {
-                        Notification::make()
+                        $notification = Notification::make()
                             ->title('Booking Dibatalkan/Gagal')
                             ->body("Booking {$booking->booking_code} oleh {$booking->customer_name} telah dibatalkan.")
-                            ->danger()
-                            ->sendToDatabase($admin);
+                            ->danger();
+                        $admin->notifyNow($notification->toDatabase());
                     } catch (\Exception $e) {
                         Log::error('Failed to send Filament database notification in syncStatus: ' . $e->getMessage());
                     }
