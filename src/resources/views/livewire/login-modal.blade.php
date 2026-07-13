@@ -2,6 +2,7 @@
 
 use App\Livewire\Forms\LoginForm;
 use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Facades\Password;
 use Livewire\Volt\Component;
 
 new class extends Component
@@ -31,6 +32,28 @@ new class extends Component
         }
 
         $this->redirect($redirectUrl);
+    }
+
+    /**
+     * Send a password reset link to the provided email address.
+     */
+    public function sendPasswordResetLink(): void
+    {
+        $this->validate([
+            'email' => ['required', 'string', 'email'],
+        ]);
+
+        $status = Password::sendResetLink(
+            $this->only('email')
+        );
+
+        if ($status != Password::RESET_LINK_SENT) {
+            $this->addError('email', __($status));
+            return;
+        }
+
+        $this->reset('email');
+        session()->flash('status', __($status));
     }
 
     /**
@@ -112,11 +135,17 @@ new class extends Component
             <h3 x-show="mode === 'register'" class="text-2xl font-bold text-gray-900 dark:text-white bg-gradient-to-r from-blue-600 to-cyan-500 bg-clip-text text-transparent" style="display: none;">
                 Daftar Hans Padel
             </h3>
+            <h3 x-show="mode === 'forgot-password'" class="text-2xl font-bold text-gray-900 dark:text-white bg-gradient-to-r from-blue-600 to-cyan-500 bg-clip-text text-transparent" style="display: none;">
+                Lupa Password
+            </h3>
             <p x-show="mode === 'login'" class="text-sm text-gray-600 dark:text-gray-300 mt-2">
                 Silakan login terlebih dahulu untuk melanjutkan pemesanan
             </p>
             <p x-show="mode === 'register'" class="text-sm text-gray-600 dark:text-gray-300 mt-2" style="display: none;">
                 Silakan isi data berikut untuk mendaftar akun baru
+            </p>
+            <p x-show="mode === 'forgot-password'" class="text-sm text-gray-600 dark:text-gray-300 mt-2" style="display: none;">
+                Masukkan email Anda untuk menerima link reset password
             </p>
         </div>
 
@@ -151,12 +180,18 @@ new class extends Component
                 <x-input-error :messages="$errors->get('form.password')" class="mt-1" />
             </div>
 
-            <!-- Remember Me -->
+            <!-- Remember Me & Forgot Password -->
             <div class="flex items-center justify-between">
                 <label class="inline-flex items-center">
                     <input wire:model="form.remember" type="checkbox" class="rounded border-gray-300 dark:border-gray-600 text-blue-600 shadow-sm focus:ring-blue-500 bg-white/50 dark:bg-gray-800/50">
                     <span class="ms-2 text-sm text-gray-600 dark:text-gray-300">Ingat saya</span>
                 </label>
+
+                @if (Route::has('password.request'))
+                    <button type="button" x-on:click="mode = 'forgot-password'" class="text-sm text-blue-600 dark:text-blue-400 hover:underline">
+                        Lupa password?
+                    </button>
+                @endif
             </div>
 
             <!-- Submit -->
@@ -164,6 +199,20 @@ new class extends Component
                 <button type="submit" class="w-full bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-semibold p-3 rounded-lg hover:from-blue-700 hover:to-cyan-600 transition shadow-lg shadow-blue-500/20 active:scale-95">
                     Log In
                 </button>
+            </div>
+
+            <!-- Google Login -->
+            <div class="mt-4 flex items-center justify-between">
+                <span class="border-b w-1/5 lg:w-1/4 dark:border-gray-600"></span>
+                <span class="text-xs text-center text-gray-500 dark:text-gray-400 uppercase">atau login dengan</span>
+                <span class="border-b w-1/5 lg:w-1/4 dark:border-gray-600"></span>
+            </div>
+
+            <div class="mt-4">
+                <a href="{{ route('google.login') }}" class="w-full flex items-center justify-center p-3 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm text-sm font-semibold text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    <svg class="h-5 w-5 mr-2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/><path d="M1 1h22v22H1z" fill="none"/></svg>
+                    Google
+                </a>
             </div>
 
             <!-- Register Info -->
@@ -245,6 +294,43 @@ new class extends Component
                 Sudah punya akun? 
                 <button type="button" x-on:click="mode = 'login'" class="text-blue-600 dark:text-blue-400 font-semibold hover:underline">
                     Log In
+                </button>
+            </div>
+        </form>
+
+        <!-- Forgot Password Form -->
+        <form x-show="mode === 'forgot-password'" wire:submit="sendPasswordResetLink" class="space-y-4" style="display: none;">
+            @if (session('status'))
+                <div class="p-3 bg-green-100 text-green-700 rounded-lg text-sm text-center mb-4">
+                    {{ session('status') }}
+                </div>
+            @endif
+
+            <!-- Email Address -->
+            <div>
+                <label for="forgot-email" class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Email</label>
+                <input 
+                    wire:model="email" 
+                    id="forgot-email" 
+                    type="email" 
+                    required 
+                    class="w-full border border-gray-300 dark:border-gray-600 p-3 rounded-lg bg-white/50 dark:bg-gray-800/50 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                    placeholder="nama@email.com"
+                >
+                <x-input-error :messages="$errors->get('email')" class="mt-1" />
+            </div>
+
+            <!-- Submit -->
+            <div>
+                <button type="submit" class="w-full bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-semibold p-3 rounded-lg hover:from-blue-700 hover:to-cyan-600 transition shadow-lg shadow-blue-500/20 active:scale-95">
+                    Kirim Link Reset Password
+                </button>
+            </div>
+
+            <!-- Back to Login Info -->
+            <div class="text-center text-sm text-gray-600 dark:text-gray-300 mt-4">
+                <button type="button" x-on:click="mode = 'login'" class="text-blue-600 dark:text-blue-400 font-semibold hover:underline">
+                    Kembali ke Login
                 </button>
             </div>
         </form>

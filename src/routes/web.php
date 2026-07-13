@@ -2,7 +2,6 @@
 
 use App\Models\Booking;
 use App\Models\Facility;
-use App\Models\ProjectReport;
 use App\Http\Controllers\BookingController;
 
 use Illuminate\Http\Request;
@@ -19,6 +18,10 @@ Route::view('profile', 'profile')
 
 require __DIR__.'/auth.php';
 
+use App\Http\Controllers\Auth\GoogleAuthController;
+
+Route::get('/auth/google', [GoogleAuthController::class, 'redirect'])->name('google.login');
+Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback'])->name('google.callback');
 Livewire::setUpdateRoute(function ($handle) {
     return Route::post(config('app.asset_prefix') . '/livewire/update', $handle);
 });
@@ -32,13 +35,34 @@ Route::get('/', function () {
     $totalCourts = Facility::where('is_active', true)->count();
     $courts = Facility::where('is_active', true)->get();
     
+    $aboutSettings = \App\Models\Setting::whereIn('key', [
+        'about_title',
+        'about_description',
+        'about_image'
+    ])->pluck('value', 'key');
+
     $about = (object) [
-        'title' => 'About US',
-        'description' => 'Hans Padel adalah sistem informasi penyewaan lapangan padel berbasis web yang membantu pengguna melihat lapangan, mengecek jadwal, dan melakukan booking secara online dengan lebih mudah. Projek ini dibuat untuk syarat dan kebutuhan untuk tugas akhir Mata Kuliah Pemrograman Web',
-        'image' => 'images/About.jpg'
+        'title' => $aboutSettings['about_title'] ?? 'About US',
+        'description' => $aboutSettings['about_description'] ?? 'Hans Padel adalah penyedia jasa penyewaan lapangan padel modern yang siap melayani kebutuhan olahraga Anda dengan fasilitas berkualitas tinggi.',
+        'image' => $aboutSettings['about_image'] ?? 'images/About.jpg'
     ];
 
-    return view('pages.home', compact('totalBookings', 'totalCourts', 'courts', 'about'));
+    $locationSettings = \App\Models\Setting::whereIn('key', [
+        'location_title',
+        'location_address',
+        'location_whatsapp',
+        'location_email',
+        'location_hours_weekday',
+        'location_hours_weekend'
+    ])->pluck('value', 'key');
+
+    $mainCardSettings = \App\Models\Setting::whereIn('key', [
+        'main_card_subtitle',
+        'main_card_title',
+        'main_card_description'
+    ])->pluck('value', 'key');
+
+    return view('pages.home', compact('totalBookings', 'totalCourts', 'courts', 'about', 'locationSettings', 'mainCardSettings'));
 });
 
 Route::get('/booking', function () {
@@ -67,13 +91,6 @@ Route::get('/diagram', function () {
     return view('pages.diagram');
 });
 
-// Showcase Report Page
-Route::get('/showcase-report', function () {
-    $report = ProjectReport::latest()->firstOrFail();
-
-    return view('pages.showcase-report', compact('report'));
-});
-
 // Midtrans Payment Page
 Route::get('/payment/{booking}', function (Booking $booking) {
     return view('pages.payment', compact('booking'));
@@ -99,7 +116,10 @@ Route::get('/riwayat-transaksi', function () {
 
     foreach ($bookings as $booking) {
         if ($booking->status === 'pending_payment') {
-            BookingController::syncStatus($booking);
+            $booking = BookingController::syncStatus($booking);
+            if ($booking->status === 'pending_payment' && $booking->created_at->addHour()->isPast()) {
+                $booking->update(['status' => 'cancelled']);
+            }
         }
     }
 

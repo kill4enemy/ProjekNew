@@ -90,10 +90,15 @@
                                             Berhasil
                                         </span>
                                     @elseif($booking->status === 'pending_payment')
-                                        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400 border border-amber-200/50 dark:border-amber-900/30">
-                                            <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
-                                            Menunggu Pembayaran
-                                        </span>
+                                        <div class="flex flex-col items-start gap-1">
+                                            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400 border border-amber-200/50 dark:border-amber-900/30">
+                                                <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                                                Menunggu Pembayaran
+                                            </span>
+                                            <span class="text-[11px] font-semibold text-rose-500 dark:text-rose-400 pl-1">
+                                                Batas: {{ $booking->created_at->addHour()->format('d M Y, H:i') }}
+                                            </span>
+                                        </div>
                                     @else
                                         <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 dark:bg-rose-950/30 dark:text-rose-400 border border-rose-200/50 dark:border-rose-900/30">
                                             <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>

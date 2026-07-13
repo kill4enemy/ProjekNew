@@ -46,6 +46,14 @@ class BookingController extends Controller
         $openTime = Carbon::parse($openTimeSetting)->format('H:i:s');
         $closeTime = Carbon::parse($closeTimeSetting)->format('H:i:s');
 
+        // Pengecekan Waktu Lampau (Tidak Boleh Booking di Masa Lalu)
+        $bookingDateTime = Carbon::parse($request->booking_date . ' ' . $startTime->format('H:i:s'), 'Asia/Jakarta');
+        if ($bookingDateTime->isPast()) {
+            return back()
+                ->withInput()
+                ->with('error', 'Waktu yang Anda pilih sudah terlewat. Silakan pilih jadwal di masa depan.');
+        }
+
         if (
             $startTime->format('H:i:s') < $openTime ||
             $endTime->format('H:i:s') > $closeTime
@@ -108,6 +116,11 @@ class BookingController extends Controller
             ],
             'callbacks' => [
                 'finish' => route('payment.finish', $booking),
+            ],
+            'expiry' => [
+                'start_time' => now()->timezone('Asia/Jakarta')->format('Y-m-d H:i:s O'),
+                'unit' => 'hour',
+                'duration' => 1,
             ],
         ];
 

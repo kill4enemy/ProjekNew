@@ -74,6 +74,7 @@
                                     ? asset($court->image)
                                     : asset('storage/' . $court->image))
                                 : '' }}"
+                            data-price="{{ $court->price_per_hour }}"
                             @selected(old('facility_id') == $court->id)
                         >
                             {{ $court->name }}
@@ -88,6 +89,7 @@
                 </label>
 
                 <select
+                    id="duration-select"
                     name="duration"
                     class="w-full border border-gray-300 dark:border-gray-600 p-3 rounded bg-white text-gray-900 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
@@ -149,6 +151,7 @@
                     type="date"
                     name="booking_date"
                     value="{{ old('booking_date') }}"
+                    min="{{ now()->timezone('Asia/Jakarta')->format('Y-m-d') }}"
                     class="w-full border border-gray-300 dark:border-gray-600 p-3 rounded bg-white text-gray-900 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
                 >
@@ -168,6 +171,9 @@
             </div>
 
             <div class="md:col-span-2 pt-4">
+                <div class="mb-4 text-xl font-bold text-gray-900 dark:text-white">
+                    Total Pembayaran: <span id="total-price" class="text-blue-600 dark:text-blue-400">Rp 0</span>
+                </div>
                 <button class="bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 transition">
                     Booking
                 </button>
@@ -185,10 +191,14 @@
     const courtSelect = document.getElementById('court-select');
     const courtPreview = document.getElementById('court-preview');
     const courtPlaceholder = document.getElementById('court-placeholder');
+    const durationSelect = document.getElementById('duration-select');
+    const totalPriceElement = document.getElementById('total-price');
 
-    function updateCourtPreview() {
+    function updateCourtPreviewAndPrice() {
         const selectedOption = courtSelect.options[courtSelect.selectedIndex];
-        const imageUrl = selectedOption.dataset.image;
+        const imageUrl = selectedOption?.dataset?.image;
+        const pricePerHour = parseInt(selectedOption?.dataset?.price) || 0;
+        const duration = parseInt(durationSelect.value) || 1;
 
         if (imageUrl) {
             courtPreview.src = imageUrl;
@@ -199,10 +209,16 @@
             courtPreview.classList.add('hidden');
             courtPlaceholder.classList.remove('hidden');
         }
+
+        const totalPrice = pricePerHour * duration;
+        totalPriceElement.textContent = 'Rp ' + totalPrice.toLocaleString('id-ID');
     }
 
-    courtSelect.addEventListener('change', updateCourtPreview);
-    updateCourtPreview();
+    courtSelect.addEventListener('change', updateCourtPreviewAndPrice);
+    if(durationSelect) {
+        durationSelect.addEventListener('change', updateCourtPreviewAndPrice);
+    }
+    updateCourtPreviewAndPrice();
 </script>
 
 @endsection

@@ -17,24 +17,23 @@
 
         <div class="absolute inset-0 dark:bg-black/40"></div>
 
-<div class="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-10 min-h-[620px] items-stretch px-8 md:px-28 pt-10 py-16">
+<div class="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-10 min-h-[620px] items-stretch px-4 md:px-12 lg:px-28 pt-10 py-16">
 
     {{-- Left Card --}}
     <div class="w-full h-full rounded-2xl bg-white/80 dark:bg-white/10 backdrop-blur-sm border border-white/30 dark:border-white/20 p-7 md:p-8 shadow-2xl flex flex-col justify-center">
         <p class="text-blue-600 dark:text-blue-300 font-semibold tracking-widest uppercase mb-4">
-            Hans Padel
+            {{ $mainCardSettings['main_card_subtitle'] ?? 'Hans Padel' }}
         </p>
 
         <h1 class="text-4xl md:text-6xl font-bold text-gray-900 dark:text-white mb-6 leading-tight">
-            Booking Lapangan Padel Jadi Lebih Mudah
+            {{ $mainCardSettings['main_card_title'] ?? 'Booking Lapangan Padel Jadi Lebih Mudah' }}
         </h1>
 
         <p class="text-gray-700 dark:text-gray-200 text-lg mb-8 leading-relaxed">
-            Sistem Informasi Penyewaan Lapangan Padel Berbasis Web membantu pengguna
-            melihat lapangan, memilih jadwal, dan melakukan pemesanan secara online.
+            {{ $mainCardSettings['main_card_description'] ?? 'Sistem Informasi Penyewaan Lapangan Padel Berbasis Web membantu pengguna melihat lapangan, memilih jadwal, dan melakukan pemesanan secara online.' }}
         </p>
 
-        <div class="grid grid-cols-3 gap-4 mb-8">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-4 mb-8 text-center sm:text-left">
             <div>
                 <h3 class="text-3xl font-bold text-gray-900 dark:text-white">
                     {{ $totalBookings }}+
@@ -57,17 +56,17 @@
             </div>
         </div>
 
-        <div class="flex flex-wrap gap-4">
+        <div class="flex flex-col sm:flex-row flex-wrap gap-4 justify-center sm:justify-start">
             <a
                 href="/booking"
-                class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition"
+                class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition text-center"
             >
                 Booking Sekarang
             </a>
 
             <a
                 href="/courts"
-                class="bg-gray-900/10 dark:bg-white/20 text-gray-900 dark:text-white px-6 py-3 rounded-lg border border-gray-900/10 dark:border-white/30 hover:bg-gray-900/20 dark:hover:bg-white/30 transition"
+                class="bg-gray-900/10 dark:bg-white/20 text-gray-900 dark:text-white px-6 py-3 rounded-lg border border-gray-900/10 dark:border-white/30 hover:bg-gray-900/20 dark:hover:bg-white/30 transition text-center"
             >
                 Lihat Lapangan
             </a>
@@ -198,7 +197,7 @@
             <div class="p-8 flex flex-col justify-center">
 
                 <h2 class="text-3xl font-bold mb-6 text-gray-900 dark:text-white">
-                    Lokasi Kami
+                    {{ $locationSettings['location_title'] ?? 'Lokasi Kami' }}
                 </h2>
 
                 <div class="space-y-5 text-gray-700 dark:text-white leading-relaxed">
@@ -209,7 +208,7 @@
                         </span>
 
                         <p class="text-gray-700 dark:text-gray-100">
-                            Jl. Contoh No. 123, Tangerang, Banten
+                            {{ $locationSettings['location_address'] ?? 'Jl. Contoh No. 123, Tangerang, Banten' }}
                         </p>
                     </div>
 
@@ -219,7 +218,7 @@
                         </span>
 
                         <p class="text-gray-700 dark:text-gray-100">
-                            +62 812-8421-6264
+                            {{ $locationSettings['location_whatsapp'] ?? '+62 812-8421-6264' }}
                         </p>
                     </div>
 
@@ -229,7 +228,7 @@
                         </span>
 
                         <p class="text-gray-700 dark:text-gray-100">
-                            raihanisad2007@gmail.com
+                            {{ $locationSettings['location_email'] ?? 'raihanisad2007@gmail.com' }}
                         </p>
                     </div>
 
@@ -239,11 +238,11 @@
                         </span>
 
                         <p class="text-gray-700 dark:text-gray-100">
-                            Senin - Jumat : 08.00 - 22.00
+                            {{ $locationSettings['location_hours_weekday'] ?? 'Senin - Jumat : 08.00 - 22.00' }}
                         </p>
 
                         <p class="text-gray-700 dark:text-gray-100">
-                            Sabtu - Minggu : 07.00 - 23.00
+                            {{ $locationSettings['location_hours_weekend'] ?? 'Sabtu - Minggu : 07.00 - 23.00' }}
                         </p>
                     </div>
 
