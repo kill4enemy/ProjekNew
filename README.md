@@ -3,7 +3,6 @@
 ![PHP](https://img.shields.io/badge/PHP-8.3-blue)
 ![Filament](https://img.shields.io/badge/Filament-v3-orange)
 ![Docker](https://img.shields.io/badge/Docker-Ready-2496ED)
-![License](https://img.shields.io/badge/License-MIT-green)
 Sistem Informasi Booking dan Manajemen Fasilitas berbasis **Laravel 12** yang dirancang untuk mengelola proses penyewaan lapangan (Padel) secara digital. Sistem menyediakan antarmuka pengguna untuk melakukan pemesanan lapangan, serta dashboard admin berbasis **Filament v3** untuk mengelola data operasional.
 
 ---
